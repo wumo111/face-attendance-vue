@@ -8,13 +8,10 @@
       <div class="video-content">
         <div v-if="videoError" class="video-placeholder">
           <el-icon size="64"><VideoCamera /></el-icon>
-          <p>无法访问摄像头</p>
-          <p style="font-size: 12px; color: #999;">{{ videoErrorMsg }}</p>
-          <el-button type="primary" size="small" @click="startCamera" style="margin-top: 10px;">
-            重试
-          </el-button>
+          <p>暂无视频流</p>
+          <p style="font-size: 12px; color: #999;">后端未配置视频流服务</p>
         </div>
-        <video v-else ref="videoRef" autoplay playsinline muted width="640" height="480"></video>
+        <img v-else :src="videoUrl" alt="Video Feed" width="640" height="480" @error="videoError = true" />
       </div>
     </div>
     <div class="info-card">
@@ -60,40 +57,8 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { VideoCamera } from '@element-plus/icons-vue';
 import api from '../api';
 
-const videoRef = ref(null);
+const videoUrl = ref('/api/video_feed');
 const videoError = ref(false);
-const videoErrorMsg = ref('');
-let mediaStream = null;
-
-const startCamera = async () => {
-  try {
-    videoError.value = false;
-    mediaStream = await navigator.mediaDevices.getUserMedia({
-      video: { width: 640, height: 480, facingMode: 'user' },
-      audio: false
-    });
-    if (videoRef.value) {
-      videoRef.value.srcObject = mediaStream;
-    }
-  } catch (err) {
-    console.error('摄像头访问失败:', err);
-    videoError.value = true;
-    if (err.name === 'NotAllowedError') {
-      videoErrorMsg.value = '请允许浏览器访问摄像头权限';
-    } else if (err.name === 'NotFoundError') {
-      videoErrorMsg.value = '未检测到摄像头设备';
-    } else {
-      videoErrorMsg.value = '摄像头访问失败，请检查设备';
-    }
-  }
-};
-
-const stopCamera = () => {
-  if (mediaStream) {
-    mediaStream.getTracks().forEach(track => track.stop());
-    mediaStream = null;
-  }
-};
 const lastCapture = ref(null);
 const stats = ref({
   total: 0,
@@ -132,13 +97,11 @@ const fetchDashboardData = async () => {
 };
 
 onMounted(() => {
-  startCamera();
   fetchDashboardData();
-  timer = setInterval(fetchDashboardData, 3000); // Poll every 3 seconds
+  timer = setInterval(fetchDashboardData, 3000);
 });
 
 onUnmounted(() => {
-  stopCamera();
   if (timer) clearInterval(timer);
 });
 </script>
