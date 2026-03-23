@@ -83,9 +83,9 @@ const mapStatusText = (status) => {
 
 const normalizeAttendance = (item) => ({
   ...item,
-  name: item.name || item.employeeName || '未知',
+  name: item.employeeName || item.name || '未知',
   employeeId: item.employeeId || item.id || '-',
-  recordTime: item.recordTime || item.createTime || item.attendanceTime || '-',
+  recordTime: item.timestamp ? new Date(item.timestamp).toLocaleString() : (item.recordTime || '-'),
   statusText: mapStatusText(item.status),
 });
 
@@ -99,21 +99,14 @@ const fetchAttendance = async () => {
       name: filters.name,
     };
     const res = await api.getAttendanceList(params);
-    // 文档显示直接返回列表，还是分页结构？
-    // 文档 4.2 示例没有具体 data 内容，通常是 { list: [...], total: ... }
-    // 如果实际返回是直接数组，需要适配
-    if (res.list) {
+    // res: { list: [...], total: N }
+    if (res && res.list) {
       tableData.value = res.list.map(normalizeAttendance);
       total.value = res.total || res.list.length;
     } else if (Array.isArray(res)) {
-       tableData.value = res.map(normalizeAttendance);
-       total.value = res.length;
-    } else if (res.data && Array.isArray(res.data)) {
-       tableData.value = res.data.map(normalizeAttendance);
-       total.value = res.total || res.data.length;
+      tableData.value = res.map(normalizeAttendance);
+      total.value = res.length;
     }
-    
-    // updateChart(res.chartData); // API不返回图表数据，需要前端计算或请求统计接口
   } catch (error) {
     console.error(error);
   }

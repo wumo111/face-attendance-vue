@@ -6,13 +6,12 @@
         <el-tag type="success">实时</el-tag>
       </div>
       <div class="video-content">
-        <!-- Assuming backend provides MJPEG stream at /api/video_feed -->
-        <img :src="videoUrl" alt="Video Feed" width="640" height="480" />
-        <!-- If backend supports streaming files, use <video> -->
-        <!-- <video ref="videoPlayer" width="640" height="480" controls>
-          <source :src="videoUrl" type="video/mp4" />
-          Your browser does not support the video tag.
-        </video> -->
+        <div v-if="videoError" class="video-placeholder">
+          <el-icon size="64"><VideoCamera /></el-icon>
+          <p>暂无视频流</p>
+          <p style="font-size: 12px; color: #999;">后端未配置视频流服务</p>
+        </div>
+        <img v-else :src="videoUrl" alt="Video Feed" width="640" height="480" @error="videoError = true" />
       </div>
     </div>
     <div class="info-card">
@@ -55,9 +54,11 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import { VideoCamera } from '@element-plus/icons-vue';
 import api from '../api';
 
-const videoUrl = ref('/api/video_feed'); // Update with actual backend stream URL
+const videoUrl = ref('/api/video_feed');
+const videoError = ref(false);
 const lastCapture = ref(null);
 const stats = ref({
   total: 0,
@@ -69,39 +70,27 @@ let timer = null;
 
 const fetchDashboardData = async () => {
   try {
-    const [captures, attendance, employees] = await Promise.all([
+    const [statsData, captureRes] = await Promise.all([
+      api.getStatistics(),
       api.getCaptureList({ page: 1, pageSize: 1 }),
-      api.getAttendanceList({ page: 1, pageSize: 999 }),
-      api.getEmployeeList(),
     ]);
-    const captureList = Array.isArray(captures)
-      ? captures
-      : captures.list || captures.data || [];
-    const attendanceList = Array.isArray(attendance)
-      ? attendance
-      : attendance.list || attendance.data || [];
-    const employeeList = Array.isArray(employees)
-      ? employees
-      : employees.list || employees.data || [];
+    // statsData: { total, actual, absent, late }
+    stats.value = statsData || { total: 0, actual: 0, absent: 0, late: 0 };
+
+    // captureRes: { list: [...], total: N }
+    const captureList = captureRes?.list || captureRes || [];
+
     const latest = captureList[0];
+    const imageUrl = `/uploads/${latest.imageUrl}`;
     lastCapture.value = latest
       ? {
-          imageUrl: latest.imageUrl || latest.image || '',
-          name: latest.name || latest.employeeName || '未知',
+          imageUrl: imageUrl ,
+          name: latest.employeeName || '未知',
           employeeId: latest.employeeId || '-',
-          captureTime: latest.captureTime || latest.createTime || latest.time || '-',
+          captureTime: latest.timestamp ? new Date(latest.timestamp).toLocaleString() : '-',
           status: Number(latest.score || 0) >= 0.6 ? '正常' : '迟到',
         }
       : null;
-    const totalNum = employeeList.length;
-    const actualNum = attendanceList.length;
-    const lateNum = attendanceList.filter((i) => Number(i.status) === 1).length;
-    stats.value = {
-      total: totalNum,
-      actual: actualNum,
-      absent: Math.max(totalNum - actualNum, 0),
-      late: lateNum,
-    };
   } catch (error) {
     console.error(error);
   }
@@ -109,7 +98,7 @@ const fetchDashboardData = async () => {
 
 onMounted(() => {
   fetchDashboardData();
-  timer = setInterval(fetchDashboardData, 3000); // Poll every 3 seconds
+  timer = setInterval(fetchDashboardData, 3000);
 });
 
 onUnmounted(() => {
@@ -167,6 +156,15 @@ onUnmounted(() => {
   align-items: center;
   background: #000;
   min-height: 480px;
+}
+
+.video-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  gap: 10px;
 }
 
 .capture-image {
