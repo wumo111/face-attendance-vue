@@ -38,7 +38,11 @@ api.interceptors.response.use(
 
 export default {
   register(data) {
-    return api.post('/user/register', data);
+    return api.post('/user/register', {
+      username: data.username,
+      password: data.password,
+      role: data.role || 'USER',
+    });
   },
   login(data) {
     return api.post('/login', data);
@@ -56,28 +60,25 @@ export default {
   },
   getAttendanceList(params) {
     const { page, pageSize, ...rest } = params;
-    return api.get('/attendance/list', { 
-      params: { 
-        page, 
-        size: pageSize, 
-        ...rest 
-      } 
+    return api.get('/attendance/list', {
+      params: {
+        page,
+        size: pageSize,
+        ...rest
+      }
     });
   },
   getCaptureList(params) {
     const { page, pageSize, ...rest } = params;
-    return api.get('/capture/list', { 
-      params: { 
-        page, 
-        size: pageSize, 
-        ...rest 
-      } 
+    return api.get('/capture/list', {
+      params: {
+        page,
+        size: pageSize,
+        ...rest
+      }
     });
   },
   getStatistics() {
-    return Promise.resolve({
-      stats: { total: 0, actual: 0, absent: 0, late: 0 },
-      lastCapture: null
-    }); 
+    return api.get('/stats/dashboard');
   }
 };

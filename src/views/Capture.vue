@@ -3,6 +3,10 @@
     <div class="header">
       <el-button type="primary" @click="fetchCaptures">刷新</el-button>
     </div>
+    <div class="video-section">
+      <h3>实时监控</h3>
+      <img src="http://localhost:5000/video_feed" class="video-feed" />
+    </div>
     <el-table :data="tableData" style="width: 100%" stripe border>
       <el-table-column prop="imageUrl" label="抓拍照片" width="180">
         <template #default="scope">
@@ -52,13 +56,18 @@ const currentPage = ref(1);
 const pageSize = ref(10);
 const total = ref(0);
 
-const normalizeCapture = (item) => ({
-  ...item,
-  imageUrl: item.imageUrl || item.image || '',
-  name: item.name || item.employeeName || '未知',
-  captureTime: item.captureTime || item.createTime || item.time || '-',
-  score: Number(item.score || 0),
-});
+const normalizeCapture = (item) => {
+  const rawUrl = item.imageUrl || item.image || '';
+  const imageUrl = rawUrl ? `/uploads/${rawUrl}` : '';
+  console.log(`imageUrl: ${imageUrl}`);
+  return {
+    ...item,
+    imageUrl,
+    name: item.employeeName || item.name || '未知',
+    captureTime: item.timestamp ? new Date(item.timestamp).toLocaleString() : (item.captureTime || '-'),
+    score: Number(item.score || 0),
+  };
+};
 
 const fetchCaptures = async () => {
   try {
@@ -67,15 +76,13 @@ const fetchCaptures = async () => {
       pageSize: pageSize.value,
     };
     const res = await api.getCaptureList(params);
-    if (res.list) {
+    // res: { list: [...], total: N }
+    if (res && res.list) {
       tableData.value = res.list.map(normalizeCapture);
-      total.value = res.total;
+      total.value = res.total || 0;
     } else if (Array.isArray(res)) {
       tableData.value = res.map(normalizeCapture);
       total.value = res.length;
-    } else if (res.data && Array.isArray(res.data)) {
-      tableData.value = res.data.map(normalizeCapture);
-      total.value = res.total || res.data.length;
     }
   } catch (error) {
     console.error(error);
@@ -108,6 +115,22 @@ onMounted(() => {
 .header {
   margin-bottom: 20px;
   text-align: right;
+}
+
+.video-section {
+  margin-bottom: 20px;
+}
+
+.video-section h3 {
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.video-feed {
+  width: 100%;
+  max-width: 640px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
 }
 
 .pagination {

@@ -25,6 +25,11 @@ export default defineConfig({
         changeOrigin: true,
         // rewrite: (path) => path.replace(/^\/api/, ''), // 根据Java后端实际前缀决定是否重写
       },
+      '/uploads': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        // rewrite: (path) => path.replace(/^\/api/, ''), // 根据Java后端实际前缀决定是否重写
+      },
     },
   },
 })
